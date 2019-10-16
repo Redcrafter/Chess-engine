@@ -123,11 +123,11 @@ int main() {
 
 	// RunElo();
 
-	// MoveTest();
+	MoveTest();
 	// PerformanceTest();
 	// CalcMagic();
 
-	auto rnd = std::mt19937(std::random_device()());
+	/* auto rnd = std::mt19937(std::random_device()());
 
 	auto white = Players::Console();
 	auto black = Players::Negamax();
@@ -183,7 +183,7 @@ int main() {
 		}
 	} else {
 		printf("Draw");
-	}
+	}*/
 
 	return 0;
 }

@@ -2,9 +2,7 @@
 
 #include "Move.h"
 
-#include <intrin.h>
 #include <string>
-#include <iostream>
 #include <vector>
 
 class ChessEngine {
@@ -44,11 +42,11 @@ private:
 	
 	void PossibleWP(std::vector<Move>* moves) const;
 	void PossibleBP(std::vector<Move>* moves) const;
-	static void PossibleN(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t n);
+	void PossibleN(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t n);
 	void PossibleB(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t b) const;
 	void PossibleR(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t r, MoveType type) const;
 	void PossibleQ(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t q) const;
-	static void PossibleK(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t k, MoveType type);
+	void PossibleK(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t k, MoveType type);
 	void PossibleWC(std::vector<Move>* moves);
 	void PossibleBC(std::vector<Move>* moves);
 

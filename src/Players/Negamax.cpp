@@ -2,10 +2,10 @@
 
 static int eval(ChessEngine& g) {
 	int score =
-		9 * (__popcnt64(g.White & g.Q) - __popcnt64(g.Black & g.Q)) +
-		5 * (__popcnt64(g.White & g.R) - __popcnt64(g.Black & g.R)) +
-		3 * (__popcnt64(g.White & (g.B | g.N)) - __popcnt64(g.Black & (g.B | g.N))) +
-		1 * (__popcnt64(g.White & g.P) - __popcnt64(g.Black & g.P));
+		9 * (popcnt64(g.White & g.Q) - popcnt64(g.Black & g.Q)) +
+		5 * (popcnt64(g.White & g.R) - popcnt64(g.Black & g.R)) +
+		3 * (popcnt64(g.White & (g.B | g.N)) - popcnt64(g.Black & (g.B | g.N))) +
+		1 * (popcnt64(g.White & g.P) - popcnt64(g.Black & g.P));
 
 	if(g.WhiteMove) {
 		return score;

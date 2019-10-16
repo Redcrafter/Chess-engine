@@ -2,19 +2,19 @@
 
 Move Players::Console::MakeMove(ChessEngine& game) {
 	auto moves = *game.GetMoves();
-	system("cls");
+	// system("cls");
 	game.PrintBoard();
 
 	while(true) {
 		std::cout << "Enter Move: ";
-		
+
 		std::string str;
 		std::getline(std::cin, str);
 
 		if(str.length() == 4) {
-			Move m = Move(str, MoveType::Error);
+			const Move m{str, MoveType::Error};
 
-			for (Move move : moves) {
+			for(Move& move : moves) {
 				if(move.X0 == m.X0 && move.Y0 == m.Y0 && move.X1 == m.X1 && move.Y1 == m.Y1) {
 					return move;
 				}

@@ -1,11 +1,10 @@
 #include "ChessEngine.h"
 #include "ChessConstants.h"
 #include "Tables.h"
+#include "../Platform.h"
 
-#include <sstream>
-
-#define NumberOfTrailingZeros _tzcnt_u64
-
+#include <iostream>
+#include <memory.h>
 static uint64_t Reverse(uint64_t i) {
 	// HD, Figure 7-1
 	i = (i & 0x5555555555555555L) << 1 | (i >> 1) & 0x5555555555555555L;
@@ -13,7 +12,7 @@ static uint64_t Reverse(uint64_t i) {
 	i = (i & 0x0f0f0f0f0f0f0f0fL) << 4 | (i >> 4) & 0x0f0f0f0f0f0f0f0fL;
 	i = (i & 0x00ff00ff00ff00ffL) << 8 | (i >> 8) & 0x00ff00ff00ff00ffL;
 	i = (i << 48) | ((i & 0xffff0000L) << 16) | ((i >> 16) & 0xffff0000L) | (i >> 48);
-	_tzcnt_u64(10);
+	NumberOfTrailingZeros(10);
 	return i;
 }
 
@@ -175,7 +174,7 @@ ChessEngine::ChessEngine(std::string fen) : White(0), Black(0), P(0), N(0), R(0)
 		} else if(p == '6') {
 			EP = 1ULL << (7 - (ep - 'a') + 4 * 8);
 		} else {
-			throw std::exception("Invalid en passant position");
+			throw std::logic_error("Invalid en passant position");
 		}
 
 		i++;
@@ -948,12 +947,12 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->push_back(Move(
-				(x1 - 1),
-				y1,
-				x1,
-				(y1 + 1),
-				MoveType::BlackEnPassant)
+		moves->emplace_back(
+			(x1 - 1), 
+			y1, 
+			x1, 
+			(y1 + 1), 
+			MoveType::BlackEnPassant
 		);
 	}
 	#pragma endregion
@@ -1137,16 +1136,16 @@ void ChessEngine::PossibleBC(std::vector<Move>* moves) {
 	}
 }
 
-unsigned long long ChessEngine::StraightMask(int s) const {
+uint64_t ChessEngine::StraightMask(int s) const {
 	const auto mag = rookTbl[s];
 	return rookAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 12)];
 }
-unsigned long long ChessEngine::DiagMask(int s) const {
+uint64_t ChessEngine::DiagMask(int s) const {
 	const auto mag = bishopTbl[s];
 	return bishopAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 9)];
 }
 
-unsigned long long ChessEngine::UnsafeForBlack() const {
+uint64_t ChessEngine::UnsafeForBlack() const {
 	uint64_t res;
 
 	#pragma region Pawn
@@ -1212,7 +1211,7 @@ unsigned long long ChessEngine::UnsafeForBlack() const {
 
 	return res;
 }
-unsigned long long ChessEngine::UnsafeForWhite() const {
+uint64_t ChessEngine::UnsafeForWhite() const {
 	uint64_t res;
 
 	#pragma region Pawn

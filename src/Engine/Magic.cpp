@@ -1,7 +1,7 @@
 #include "Magic.h"
+#include "../Platform.h"
 
 #include <cstdio>
-#include <intrin.h>
 #include <random>
 #include <fstream>
 
@@ -141,7 +141,7 @@ void find_magic(int sq, int m, bool bishop) {
 	uint64_t b[4096], a[4096], used[4096];
 
 	uint64_t mask = bishop ? bishopMask(sq) : rookMask(sq);
-	int n = __popcnt64(mask);
+	int n = popcnt64(mask);
 
 	for(int i = 0; i < (1 << n); i++) {
 		b[i] = index_to_uint64_t(i, n, mask);
@@ -150,7 +150,7 @@ void find_magic(int sq, int m, bool bishop) {
 
 	while(true) {
 		uint64_t magic = random_uint64_t_fewbits();
-		if(__popcnt64((mask * magic) & 0xFF00000000000000ULL) < 7)
+		if(popcnt64((mask * magic) & 0xFF00000000000000ULL) < 7)
 			continue;
 
 		for(int i = 0; i < 4096; i++)

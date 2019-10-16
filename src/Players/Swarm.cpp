@@ -7,7 +7,7 @@ Move Players::Swarm::MakeMove(ChessEngine& game) {
 	Move best;
 
 	auto kingBit = game.K & (game.WhiteMove ? game.Black : game.White);
-	int pos = _tzcnt_u64(kingBit);
+	int pos = NumberOfTrailingZeros(kingBit);
 	auto kingX = 7 - pos % 8;
 	auto kingY = 7 - pos / 8;
 	

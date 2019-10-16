@@ -116,5 +116,8 @@
     <ClInclude Include="src\Players\MinOpptMoves.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Platform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

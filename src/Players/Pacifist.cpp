@@ -17,10 +17,10 @@ Move Players::Pacifist::MakeMove(ChessEngine& game) {
 
 	int mask = game.WhiteMove ? game.Black : game.White;
 
-	const int qCount = __popcnt64(mask & game.Q);
-	const int rCount = __popcnt64(mask & game.R);
-	const int bnCount = __popcnt64(mask & (game.B | game.N));
-	const int pCount = __popcnt64(mask & game.P);
+	const int qCount = popcnt64(mask & game.Q);
+	const int rCount = popcnt64(mask & game.R);
+	const int bnCount = popcnt64(mask & (game.B | game.N));
+	const int pCount = popcnt64(mask & game.P);
 
 	for(Move move : moves) {
 		auto cp = game;
@@ -36,13 +36,13 @@ Move Players::Pacifist::MakeMove(ChessEngine& game) {
 					score = Check;
 				}
 			} else {
-				if(qCount - __popcnt64(mask & cp.Q)) {
+				if(qCount - popcnt64(mask & cp.Q)) {
 					score = CaptureQueen;
-				} else if(rCount - __popcnt64(mask & cp.R)) {
+				} else if(rCount - popcnt64(mask & cp.R)) {
 					score = CaptureRook;
-				} else if(bnCount - __popcnt64(mask & (cp.B | cp.N))) {
+				} else if(bnCount - popcnt64(mask & (cp.B | cp.N))) {
 					score = CaptureBN;
-				} else if(pCount - __popcnt64(mask & cp.P)) {
+				} else if(pCount - popcnt64(mask & cp.P)) {
 					score = CapturePawn;
 				} else {
 					return move; // Best move

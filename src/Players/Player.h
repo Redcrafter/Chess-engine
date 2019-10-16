@@ -1,6 +1,9 @@
 #pragma once
 #include "../Engine/Move.h"
 #include "../Engine/ChessEngine.h"
+#include "../Platform.h"
+
+#include <iostream>
 
 namespace Players {
 	class Player {

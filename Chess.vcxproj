@@ -199,6 +199,7 @@
     <ClInclude Include="src\Players\Random.h" />
     <ClInclude Include="src\Engine\Test.h" />
     <ClInclude Include="src\Players\Swarm.h" />
+    <ClInclude Include="src\Platform.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
