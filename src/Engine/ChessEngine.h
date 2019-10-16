@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Defines.h"
 #include "Move.h"
 
 #include <intrin.h>
@@ -8,22 +7,17 @@
 #include <iostream>
 #include <vector>
 
-enum Stuff : byte {
-	Emtpy,
-	CastleWK = 1,
-	CastleWQ = 2,
-	CastleBK = 4,
-	CastleBQ = 8,
-	WhiteMove = 16
-};
-
 class ChessEngine {
 public:
-	byte Flags;
+	bool CastleWK;
+	bool CastleWQ;
+	bool CastleBK;
+	bool CastleBQ;
+	bool WhiteMove;
 
-	ulong White, Black;
-	ulong P, N, R, B, Q, K;
-	ulong EP, unsafeForWhite, unsafeForBlack;
+	uint64_t White, Black;
+	uint64_t P, N, R, B, Q, K;
+	uint64_t EP, unsafeForWhite, unsafeForBlack;
 
 	ChessEngine();
 	ChessEngine(std::string fen);
@@ -39,27 +33,27 @@ public:
 	bool IsCheckmate();
 	std::vector<Move>* GetMoves();
 private:
-	std::vector<Move>* _moves{};
-	ulong occupied{}, revOccupied{}, empty{};
+	std::vector<Move>* _moves = nullptr;
+	uint64_t occupied, revOccupied, empty;
 
 	void CalcTables();
-	ulong UnsafeForBlack() const;
-	ulong UnsafeForWhite() const;
+	uint64_t UnsafeForBlack() const;
+	uint64_t UnsafeForWhite() const;
 
 	std::vector<Move>* PossibleMoves();
 	
 	void PossibleWP(std::vector<Move>* moves) const;
 	void PossibleBP(std::vector<Move>* moves) const;
-	static void PossibleN(std::vector<Move>* moves, ulong notMyPieces, ulong n);
-	void PossibleB(std::vector<Move>* moves, ulong notMyPieces, ulong b) const;
-	void PossibleR(std::vector<Move>* moves, ulong notMyPieces, ulong r, MoveType type) const;
-	void PossibleQ(std::vector<Move>* moves, ulong notMyPieces, ulong q) const;
-	static void PossibleK(std::vector<Move>* moves, ulong notMyPieces, ulong k, MoveType type);
+	static void PossibleN(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t n);
+	void PossibleB(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t b) const;
+	void PossibleR(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t r, MoveType type) const;
+	void PossibleQ(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t q) const;
+	static void PossibleK(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t k, MoveType type);
 	void PossibleWC(std::vector<Move>* moves);
 	void PossibleBC(std::vector<Move>* moves);
 
-	ulong StraightMask(int s) const;
-	ulong DiagMask(int s) const;
+	uint64_t StraightMask(int s) const;
+	uint64_t DiagMask(int s) const;
 };
 
-void PrintBoard(ulong bitboard);
+void PrintBoard(uint64_t bitboard);

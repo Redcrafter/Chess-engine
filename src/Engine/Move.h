@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "Defines.h"
 #include <string>
 #include <sstream>
 
@@ -29,18 +28,18 @@ enum class MoveType : unsigned char {
 };
 
 struct Move {
-	byte X0;
-	byte Y0;
+	uint8_t X0;
+	uint8_t Y0;
 
-	byte X1;
-	byte Y1;
+	uint8_t X1;
+	uint8_t Y1;
 
 	MoveType Type;
 
 	Move() : X0(0), Y0(0), X1(0), Y1(0), Type(MoveType::Error) {
 	} ;
 
-	Move(byte x0, byte y0, byte x1, byte y1, MoveType type): X0(x0), Y0(y0), X1(x1), Y1(y1), Type(type) {
+	Move(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, MoveType type): X0(x0), Y0(y0), X1(x1), Y1(y1), Type(type) {
 	};
 
 	Move(std::string name, MoveType type): Type(type) {

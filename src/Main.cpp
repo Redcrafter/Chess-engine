@@ -24,7 +24,7 @@ start:
 		std::shuffle(moves->begin(), moves->end(), rnd);
 
 		Move m;
-		if(game.Flags & WhiteMove) {
+		if(game.WhiteMove) {
 			m = white->MakeMove(game);
 		} else {
 			m = black->MakeMove(game);
@@ -49,9 +49,9 @@ start:
 	// black->Games++;
 
 	auto ratio = 1.0 / (1 + pow(10, (black->Rating - white->Rating) / 400));
-	
+
 	if(game.IsCheck()) {
-		if(game.Flags & WhiteMove) {
+		if(game.WhiteMove) {
 			// Black wins
 			white->Rating -= 32 * ratio;
 			black->Rating += 32 * ratio;
@@ -80,14 +80,14 @@ static void RunElo() {
 		new Players::Negamax(),
 	};
 
-	for (int i = 0; i < 1000; ++i) {
-		for (auto white : players) {
-			for (auto black : players) {
+	for(int i = 0; i < 1000; ++i) {
+		for(auto white : players) {
+			for(auto black : players) {
 				Play(white, black);
 			}
 		}
 
-		for (auto& player : players) {
+		for(auto& player : players) {
 			// player->Rating = std::max(player->EnemySum / player->Games, 100.0);
 			// player->EnemySum = player->Games = 0;
 
@@ -97,7 +97,7 @@ static void RunElo() {
 		printf("Runde: %i\n", i + 1);
 	}
 
-	for (auto player : players) {
+	for(auto player : players) {
 		printf("%f\n", player->Rating);
 		delete player;
 	}
@@ -122,7 +122,7 @@ int main() {
 	printf("%i/%i\n", whiteWin, blackWin);*/
 
 	// RunElo();
-	
+
 	// MoveTest();
 	// PerformanceTest();
 	// CalcMagic();
@@ -134,7 +134,7 @@ int main() {
 
 	auto game = ChessEngine();
 
-	while(true){
+	while(true) {
 		auto moves = game.GetMoves();
 		if(moves->empty()) {
 			break; // no more moves avalible
@@ -143,7 +143,7 @@ int main() {
 		std::shuffle(moves->begin(), moves->end(), rnd);
 
 		Move m;
-		if(game.Flags & WhiteMove) {
+		if(game.WhiteMove) {
 			m = white.MakeMove(game);
 		} else {
 			m = black.MakeMove(game);
@@ -159,21 +159,21 @@ int main() {
 		if(cp.IsValid()) {
 			game = cp;
 
-			if(!(game.Flags & WhiteMove)) {
+			if(!(game.WhiteMove)) {
 				std::cout << "Enemy" << m << std::endl;
 			}
 		} else {
 			// remove move from list
 			moves->erase(std::remove(moves->begin(), moves->end(), m));
-			
-			if(game.Flags & WhiteMove) {
+
+			if(game.WhiteMove) {
 				std::cout << "Invalid move" << std::endl;
 			}
 		}
 	}
 
 	if(game.IsCheck()) {
-		if(game.Flags & WhiteMove) {
+		if(game.WhiteMove) {
 			// Black wins
 			printf("Enemy wins");
 			return -1;

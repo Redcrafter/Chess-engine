@@ -7,7 +7,7 @@ static int eval(ChessEngine& g) {
 		3 * (__popcnt64(g.White & (g.B | g.N)) - __popcnt64(g.Black & (g.B | g.N))) +
 		1 * (__popcnt64(g.White & g.P) - __popcnt64(g.Black & g.P));
 
-	if(g.Flags & WhiteMove) {
+	if(g.WhiteMove) {
 		return score;
 	} else {
 		return -score;

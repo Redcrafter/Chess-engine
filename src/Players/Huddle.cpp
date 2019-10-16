@@ -6,7 +6,7 @@ Move Players::Huddle::MakeMove(ChessEngine& game) {
 	int bestDistDiff = INT32_MIN;
 	Move best;
 
-	auto kingBit = game.K & (game.Flags & WhiteMove ? game.White : game.Black);
+	auto kingBit = game.K & (game.WhiteMove ? game.White : game.Black);
 	int pos = _tzcnt_u64(kingBit);
 	auto kingX = 7 - pos % 8;
 	auto kingY = 7 - pos / 8;

@@ -1,15 +1,9 @@
 #pragma once
-#include "ChessConstants.h"
+#include <cstdint>
 
 struct SMagic {
-	ulong mask;
-	ulong magic;
-
-	SMagic() : mask(0), magic(0) {
-	};
-
-	SMagic(ulong mask, ulong magic) : mask(mask), magic(magic) {
-	};
+	uint64_t mask;
+	uint64_t magic;
 };
 
 void CalcMagic();

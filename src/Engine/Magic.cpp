@@ -36,18 +36,18 @@ const int BBits[64] = {
 
 std::random_device rnd;
 std::mt19937_64 eng(rnd());
-std::uniform_int_distribution<ulong> distr;
+std::uniform_int_distribution<uint64_t> distr;
 
-ulong random_ulong() {
+uint64_t random_uint64_t() {
 	return distr(eng);
 }
 
-ulong random_ulong_fewbits() {
-	return random_ulong() & random_ulong() & random_ulong();
+uint64_t random_uint64_t_fewbits() {
+	return random_uint64_t() & random_uint64_t() & random_uint64_t();
 }
 
-static ulong rookMask(int sq) {
-	ulong result = 0ULL;
+static uint64_t rookMask(int sq) {
+	uint64_t result = 0ULL;
 	int rk = sq / 8, fl = sq % 8, r, f;
 	for(r = rk + 1; r <= 6; r++) result |= (1ULL << (fl + r * 8));
 	for(r = rk - 1; r >= 1; r--) result |= (1ULL << (fl + r * 8));
@@ -56,8 +56,8 @@ static ulong rookMask(int sq) {
 	return result;
 }
 
-ulong bishopMask(int sq) {
-	ulong result = 0ULL;
+uint64_t bishopMask(int sq) {
+	uint64_t result = 0ULL;
 	int rk = sq / 8, fl = sq % 8, r, f;
 	for(r = rk + 1, f = fl + 1; r <= 6 && f <= 6; r++, f++) result |= (1ULL << (f + r * 8));
 	for(r = rk + 1, f = fl - 1; r <= 6 && f >= 1; r++, f--) result |= (1ULL << (f + r * 8));
@@ -66,16 +66,16 @@ ulong bishopMask(int sq) {
 	return result;
 }
 
-int pop_1st_bit(ulong* bb) {
-	ulong b = *bb ^ (*bb - 1);
+int pop_1st_bit(uint64_t* bb) {
+	uint64_t b = *bb ^ (*bb - 1);
 	auto fold = (unsigned)((b & 0xffffffff) ^ (b >> 32));
 	*bb &= (*bb - 1);
 	return BitTable[(fold * 0x783a9b23) >> 26];
 }
 
-ulong index_to_ulong(int id, int bits, ulong m) {
+uint64_t index_to_uint64_t(int id, int bits, uint64_t m) {
 	int i, j;
-	ulong result = 0ULL;
+	uint64_t result = 0ULL;
 	for(i = 0; i < bits; i++) {
 		j = pop_1st_bit(&m);
 		if(id & (1 << i))
@@ -84,8 +84,8 @@ ulong index_to_ulong(int id, int bits, ulong m) {
 	return result;
 }
 
-ulong rookAttack(int sq, ulong block) {
-	ulong result = 0ULL;
+uint64_t rookAttack(int sq, uint64_t block) {
+	uint64_t result = 0ULL;
 	int rk = sq / 8, fl = sq % 8, r, f;
 	for(r = rk + 1; r <= 7; r++) {
 		result |= (1ULL << (fl + r * 8));
@@ -106,8 +106,8 @@ ulong rookAttack(int sq, ulong block) {
 	return result;
 }
 
-ulong bishopAttack(int sq, ulong block) {
-	ulong result = 0ULL;
+uint64_t bishopAttack(int sq, uint64_t block) {
+	uint64_t result = 0ULL;
 	int rk = sq / 8, fl = sq % 8, r, f;
 	for(r = rk + 1, f = fl + 1; r <= 7 && f <= 7; r++, f++) {
 		result |= (1ULL << (f + r * 8));
@@ -128,28 +128,28 @@ ulong bishopAttack(int sq, ulong block) {
 	return result;
 }
 
-int transform(ulong b, ulong magic, int bits) {
+int transform(uint64_t b, uint64_t magic, int bits) {
 	return (int)((b * magic) >> (64 - bits));
 }
 
-static ulong bishopAttacks[64][512];
-static ulong rookAttacks[64][4096];
+static uint64_t bishopAttacks[64][512];
+static uint64_t rookAttacks[64][4096];
 SMagic bishopTbl[64];
 SMagic rookTbl[64];
 
 void find_magic(int sq, int m, bool bishop) {
-	ulong b[4096], a[4096], used[4096];
+	uint64_t b[4096], a[4096], used[4096];
 
-	ulong mask = bishop ? bishopMask(sq) : rookMask(sq);
+	uint64_t mask = bishop ? bishopMask(sq) : rookMask(sq);
 	int n = __popcnt64(mask);
 
 	for(int i = 0; i < (1 << n); i++) {
-		b[i] = index_to_ulong(i, n, mask);
+		b[i] = index_to_uint64_t(i, n, mask);
 		a[i] = bishop ? bishopAttack(sq, b[i]) : rookAttack(sq, b[i]);
 	}
 
 	while(true) {
-		ulong magic = random_ulong_fewbits();
+		uint64_t magic = random_uint64_t_fewbits();
 		if(__popcnt64((mask * magic) & 0xFF00000000000000ULL) < 7)
 			continue;
 
@@ -172,12 +172,12 @@ void find_magic(int sq, int m, bool bishop) {
 				for(int i = 0; i < 512; ++i) {
 					bishopAttacks[sq][i] = used[i];
 				}
-				bishopTbl[sq] = SMagic(mask, magic);
+				bishopTbl[sq] = {mask, magic};
 			} else {
 				for(int i = 0; i < 4096; ++i) {
 					rookAttacks[sq][i] = used[i];
 				}
-				rookTbl[sq] = SMagic(mask, magic);
+				rookTbl[sq] = {mask, magic};
 			}
 
 			return;
@@ -200,7 +200,7 @@ void CalcMagic() {
 	out.setf(std::ios::showbase);
 
 	out << "#pragma once\n";
-	out << "const ulong rookAttacks[64][4096] = {\n";
+	out << "const uint64_t rookAttacks[64][4096] = {\n";
 	for(int i = 0; i < 64; ++i) {
 		out << "    {";
 		for(int j = 0; j < 4096; ++j) {
@@ -210,7 +210,7 @@ void CalcMagic() {
 	}
 	out << "};\n\n";
 
-	out << "const ulong bishopAttacks[64][512] = {\n";
+	out << "const uint64_t bishopAttacks[64][512] = {\n";
 	for(int i = 0; i < 64; ++i) {
 		out << "    {";
 		for(int j = 0; j < 512; ++j) {
@@ -222,13 +222,13 @@ void CalcMagic() {
 
 	out << "const SMagic rookTbl[64] = {\n";
 	for(int i = 0; i < 64; ++i) {
-		out << "    SMagic(" << rookTbl[i].mask << "," << rookTbl[i].magic << "),\n";
+		out << "    {" << rookTbl[i].mask << "," << rookTbl[i].magic << "},\n";
 	}
 	out << "};\n\n";
 
 	out << "const SMagic bishopTbl[64] = {\n";
 	for(int i = 0; i < 64; ++i) {
-		out << "    SMagic(" << bishopTbl[i].mask << "," << bishopTbl[i].magic << "),\n";
+		out << "    {" << bishopTbl[i].mask << "," << bishopTbl[i].magic << "},\n";
 	}
 	out << "};\n\n";
 

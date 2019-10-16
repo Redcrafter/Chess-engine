@@ -6,7 +6,7 @@ Move Players::Swarm::MakeMove(ChessEngine& game) {
 	int bestDistDiff = INT32_MIN;
 	Move best;
 
-	auto kingBit = game.K & (game.Flags & WhiteMove ? game.Black : game.White);
+	auto kingBit = game.K & (game.WhiteMove ? game.Black : game.White);
 	int pos = _tzcnt_u64(kingBit);
 	auto kingX = 7 - pos % 8;
 	auto kingY = 7 - pos / 8;

@@ -15,7 +15,7 @@ Move Players::Pacifist::MakeMove(ChessEngine& game) {
 	Move best;
 	int bestScore = -1;
 
-	int mask = game.Flags & WhiteMove ? game.Black : game.White;
+	int mask = game.WhiteMove ? game.Black : game.White;
 
 	const int qCount = __popcnt64(mask & game.Q);
 	const int rCount = __popcnt64(mask & game.R);

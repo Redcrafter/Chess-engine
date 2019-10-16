@@ -7,7 +7,7 @@ Move Players::SameColor::MakeMove(ChessEngine& game) {
 		auto fromWhite = move.X0 % 2 == move.Y0 % 2;
 		auto toWhite = move.X1 % 2 == move.Y1 % 2;
 
-		if(game.Flags & WhiteMove) {
+		if(game.WhiteMove) {
 			if(!fromWhite && toWhite) {
 				return move;
 			}

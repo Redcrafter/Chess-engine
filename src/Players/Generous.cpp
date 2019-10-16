@@ -6,7 +6,7 @@ Move Players::Generous::MakeMove(ChessEngine& game) {
 	Move best;
 	int bestScore = -1;
 
-	int mask = game.Flags & WhiteMove ? game.White : game.Black;
+	int mask = game.WhiteMove ? game.White : game.Black;
 	const int qCount = __popcnt64(mask & game.Q);
 	const int rCount = __popcnt64(mask & game.R);
 	const int bnCount = __popcnt64(mask & (game.B | game.N));
