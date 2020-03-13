@@ -1,7 +1,7 @@
 #include "Generous.h"
 
 Move Players::Generous::MakeMove(ChessEngine& game) {
-	auto moves = *game.GetMoves();
+	auto moves = game.GetMoves();
 
 	Move best;
 	int bestScore = -1;
@@ -12,14 +12,14 @@ Move Players::Generous::MakeMove(ChessEngine& game) {
 	const int bnCount = popcnt64(mask & (game.B | game.N));
 	const int pCount = popcnt64(mask & game.P);
 
-	for(Move move : moves) {
+	for(auto& move : moves) {
 		auto cp = game;
 		cp.MakeMove(move);
 
 		if(cp.IsValid()) {
 			int score = 0;
 
-			for(auto cmove : *cp.GetMoves()) {
+			for(auto& cmove : cp.GetMoves()) {
 				auto cpp = cp;
 				cpp.MakeMove(cmove);
 

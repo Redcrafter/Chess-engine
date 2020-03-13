@@ -19,7 +19,7 @@ static int alphaBeta(ChessEngine& game, int alpha, int beta, int depth) {
 		return eval(game); // quiesce(alpha, beta);
 	}
 
-	auto moves = *game.GetMoves();
+	auto moves = game.GetMoves();
 	auto valid = false;
 	for(auto& move : moves) {
 		auto cp = game;
@@ -58,7 +58,7 @@ Move Players::Negamax::MakeMove(ChessEngine& game) {
 	int alpha = -100000;
 	int beta = 100000;
 
-	auto moves = *game.GetMoves();
+	auto moves = game.GetMoves();
 	auto valid = false;
 	for(auto& move : moves) {
 		auto cp = game;

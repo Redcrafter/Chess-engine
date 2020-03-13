@@ -1,7 +1,7 @@
 #include "Test.h"
 #include "ChessEngine.h"
 
-#include <ctime>
+#include <chrono>
 #include <future>
 #include <iostream>
 
@@ -22,26 +22,39 @@ static Testcase data[] = {
 	{"8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1", 4, 23527, "Stalemate & Checkmate"}
 };
 
-static int invalid = 0;
-static int Perft(ChessEngine g, int depth) {
-	if (!depth) {
-		return 1;
-	}
+struct PerftDat {
+	uint32_t total = 0;
+	uint32_t valid = 0;
 
-	auto sum = 0;
-	auto moves = g.GetMoves();
-	for (auto move : *moves) {
+	uint32_t endStates = 0;
+
+	void operator +=(const PerftDat& other){
+		total += other.total;
+		valid += other.valid;
+		endStates += other.endStates;
+	}
+};
+
+static PerftDat Perft(ChessEngine& g, int depth) {
+	if(depth == 0) {
+		return PerftDat { 0, 0, 1};
+	}
+	PerftDat ret;
+
+	const auto& moves = g.GetMoves();
+	ret.total += moves.size();
+
+	for (auto& move : moves) {
 		auto c = g;
 		c.MakeMove(move);
 
 		if (c.IsValid()) {
-			sum += Perft(c, depth - 1);
-		} else {
-			invalid++;
+			ret.valid++;
+			ret += Perft(c, depth - 1);
 		}
 	}
 
-	return sum;
+	return ret;
 }
 
 void RunTests() {
@@ -51,17 +64,16 @@ void RunTests() {
 
 void MoveTest() {
 	for (auto testcase : data) {
-		invalid = 0;
 		auto g = ChessEngine(testcase.fen);
 		
 		auto count = Perft(g, testcase.depth);
 
-		if(count != testcase.count) {
+		if(count.endStates != testcase.count) {
 			std::cout << "\033[31m[Failed] ";
 		} else {
 			std::cout << "\033[32m[Passed] ";
 		}
-		std::cout << testcase.name << "\nInvalid: " << invalid << "\n";
+		std::cout << testcase.name << " Acc: " << (count.valid / (float)count.total) * 100  << "%\n";
 	}
 
 	std::cout << "\033[0m";
@@ -70,23 +82,32 @@ void MoveTest() {
 void PerformanceTest() {
 	auto g = ChessEngine("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
 
-	auto begin = clock();
+	auto begin = std::chrono::high_resolution_clock::now();
 
-	auto sum = 0;
-	auto moves = *g.GetMoves();
-	std::vector<std::future<int>> threads;
+	PerftDat sum;
+	auto moves = g.GetMoves();
+	sum.total += moves.size();
+	std::vector<std::future<PerftDat>> threads;
 	
-	for (auto move : moves) {
+	for (auto& move : moves) {
 		auto c = g;
 		c.MakeMove(move);
 
 		if (c.IsValid()) {
-			threads.push_back(std::async(Perft, c, 5));
-			/*
-			auto s = Perft(c, 5);
-			sum += s;
+			sum.valid++;
+			// threads.push_back(std::async(Perft, c, 5));
+			/* const auto& moves1 = g.GetMoves();
+			for(auto& move1 : moves1) {
+				auto c1 = c;
+				c.MakeMove(move1);
 
-			printf("%f\n", sum / 706045033.0);*/
+				if(c.IsValid()) {
+					threads.push_back(std::async(Perft, c1, 4));
+					// Perft(c, 4);
+				}
+			}*/
+			
+			sum += Perft(c, 5);
 		}
 	}
 
@@ -94,8 +115,9 @@ void PerformanceTest() {
 		sum += thread.get();
 	}
 	
-	auto end = clock();
-	auto passed = double(end - begin) / CLOCKS_PER_SEC;
+	auto end = std::chrono::high_resolution_clock::now();
+	auto passed = std::chrono::duration_cast<std::chrono::duration<float>>(end - begin).count();
 
-	printf("%fs\n%fm/s\n%i\n", passed, sum / passed, sum);
+	std::cout << "Evaluated " << sum.total << " moves in " << passed << "s = " << (int)(sum.total / passed) << "/s\n";
+	std::cout << "Accuracy: " << (sum.valid / (float)sum.total) * 100 << "%" << std::endl;
 }

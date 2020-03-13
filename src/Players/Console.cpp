@@ -1,9 +1,8 @@
 #include "Console.h"
 
 Move Players::Console::MakeMove(ChessEngine& game) {
-	auto moves = *game.GetMoves();
-	// system("cls");
-	game.PrintBoard();
+	auto moves = game.GetMoves();
+	std::cout << game << std::endl;
 
 	while(true) {
 		std::cout << "Enter Move: ";

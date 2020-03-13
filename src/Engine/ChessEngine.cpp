@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <memory.h>
+
 static uint64_t Reverse(uint64_t i) {
 	// HD, Figure 7-1
 	i = (i & 0x5555555555555555L) << 1 | (i >> 1) & 0x5555555555555555L;
@@ -12,7 +13,6 @@ static uint64_t Reverse(uint64_t i) {
 	i = (i & 0x0f0f0f0f0f0f0f0fL) << 4 | (i >> 4) & 0x0f0f0f0f0f0f0f0fL;
 	i = (i & 0x00ff00ff00ff00ffL) << 8 | (i >> 8) & 0x00ff00ff00ff00ffL;
 	i = (i << 48) | ((i & 0xffff0000L) << 16) | ((i >> 16) & 0xffff0000L) | (i >> 48);
-	NumberOfTrailingZeros(10);
 	return i;
 }
 
@@ -26,6 +26,16 @@ static uint64_t RevFileMask(int file) {
 
 static uint64_t RankMask(int rank) {
 	return 0xFFULL << (rank << 3);
+}
+
+static uint64_t StraightMask(const int s, const uint64_t occupied) {
+	const auto mag = rookTbl[s];
+	return rookAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 12)];
+}
+
+static uint64_t DiagMask(const int s, const uint64_t occupied) {
+	const auto mag = bishopTbl[s];
+	return bishopAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 9)];
 }
 
 void PrintBoard(uint64_t bitboard) {
@@ -48,12 +58,7 @@ void PrintBoard(uint64_t bitboard) {
 	std::cout << str.str() << '\n';
 }
 
-ChessEngine::~ChessEngine() {
-	delete _moves;
-}
-
-ChessEngine::ChessEngine(): ChessEngine("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
-}
+ChessEngine::ChessEngine(): ChessEngine("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") { }
 
 ChessEngine::ChessEngine(std::string fen) : White(0), Black(0), P(0), N(0), R(0), B(0), Q(0), K(0),
                                             EP(0), unsafeForWhite(0), unsafeForBlack(0) {
@@ -129,9 +134,7 @@ ChessEngine::ChessEngine(std::string fen) : White(0), Black(0), P(0), N(0), R(0)
 
 	i++;
 	const auto w = fen[i];
-	if(w == 'w') {
-		WhiteMove = true;
-	}
+	WhiteMove = w == 'w';
 
 	i += 2;
 
@@ -183,11 +186,6 @@ ChessEngine::ChessEngine(std::string fen) : White(0), Black(0), P(0), N(0), R(0)
 	// TODO other fen values
 
 	CalcTables();
-}
-
-ChessEngine::ChessEngine(const ChessEngine& other) {
-	memcpy(this, &other, sizeof(ChessEngine));
-	this->_moves = nullptr;
 }
 
 void ChessEngine::MakeMove(Move m) {
@@ -353,9 +351,54 @@ void ChessEngine::MakeMove(Move m) {
 			throw std::invalid_argument("Invalid move type");
 	}
 
-end:
+end: // TODO: remove goto
 	WhiteMove = !WhiteMove;
-	CalcTables();
+
+	// CalcTables();
+	occupied = P | N | B | R | Q | K;
+	revOccupied = Reverse(occupied);
+	empty = ~occupied;
+	if(WhiteMove) {
+		unsafeForBlack = UnsafeForBlack();
+	} else {
+		unsafeForWhite = UnsafeForWhite();
+	}
+}
+
+std::ostream& operator<<(std::ostream& str, const ChessEngine& game) {
+	for(int i = 63; i >= 0; i--) {
+		if(i % 8 == 7) {
+			str << "   +---+---+---+---+---+---+---+---+\n " << i / 8 + 1;
+		}
+
+		str << " | ";
+		const auto mask = 1ULL << i;
+
+		if((game.P & mask) != 0) {
+			str << ((game.White & mask) != 0 ? 'P' : 'p');
+		} else if((game.N & mask) != 0) {
+			str << ((game.White & mask) != 0 ? 'N' : 'n');
+		} else if((game.R & mask) != 0) {
+			str << ((game.White & mask) != 0 ? 'R' : 'r');
+		} else if((game.B & mask) != 0) {
+			str << ((game.White & mask) != 0 ? 'B' : 'b');
+		} else if((game.Q & mask) != 0) {
+			str << ((game.White & mask) != 0 ? 'Q' : 'q');
+		} else if((game.K & mask) != 0) {
+			str << ((game.White & mask) != 0 ? 'K' : 'k');
+		} else {
+			str << ' ';
+		}
+
+		if(i % 8 == 0) {
+			str << " |\n";
+		}
+	}
+
+	str << "   +---+---+---+---+---+---+---+---+\n";
+	str << "     A   B   C   D   E   F   G   H\n";
+
+	return str;
 }
 
 void ChessEngine::CalcTables() {
@@ -365,44 +408,6 @@ void ChessEngine::CalcTables() {
 
 	unsafeForWhite = UnsafeForWhite();
 	unsafeForBlack = UnsafeForBlack();
-}
-
-void ChessEngine::PrintBoard() const {
-	std::stringstream str;
-
-	for(int i = 63; i >= 0; i--) {
-		if(i % 8 == 7) {
-			str << "   +---+---+---+---+---+---+---+---+\n " << i / 8 + 1;
-		}
-
-		str << " | ";
-		const auto mask = 1ULL << i;
-
-		if((P & mask) != 0) {
-			str << ((White & mask) != 0 ? 'P' : 'p');
-		} else if((N & mask) != 0) {
-			str << ((White & mask) != 0 ? 'N' : 'n');
-		} else if((R & mask) != 0) {
-			str << ((White & mask) != 0 ? 'R' : 'r');
-		} else if((B & mask) != 0) {
-			str << ((White & mask) != 0 ? 'B' : 'b');
-		} else if((Q & mask) != 0) {
-			str << ((White & mask) != 0 ? 'Q' : 'q');
-		} else if((K & mask) != 0) {
-			str << ((White & mask) != 0 ? 'K' : 'k');
-		} else {
-			str << (' ');
-		}
-
-		if(i % 8 == 0) {
-			str << " |\n";
-		}
-	}
-
-	str << ("   +---+---+---+---+---+---+---+---+\n");
-	str << ("     A   B   C   D   E   F   G   H\n");
-
-	std::cout << str.str();
 }
 
 bool ChessEngine::IsValid() const {
@@ -418,7 +423,7 @@ bool ChessEngine::IsCheckmate() {
 		return false;
 	}
 
-	auto moves = *GetMoves();
+	auto moves = GetMoves();
 	for(const auto move : moves) {
 		auto cp = *this;
 		cp.MakeMove(move);
@@ -431,20 +436,12 @@ bool ChessEngine::IsCheckmate() {
 	return true;
 }
 
-std::vector<Move>* ChessEngine::GetMoves() {
-	if(_moves == nullptr) {
-		_moves = PossibleMoves();
-	}
-
-	return _moves;
-}
-
-std::vector<Move>* ChessEngine::PossibleMoves() {
-	auto moves = new std::vector<Move>();
+std::vector<Move> ChessEngine::GetMoves() {
+	auto moves = std::vector<Move>();
 
 	if(WhiteMove) {
 		const auto notWhitePieces = ~((occupied & White) | (Black & K)); // added BK to avoid illegal capture
-
+		unsafeForWhite = UnsafeForWhite();
 		PossibleWP(moves);
 		PossibleN(moves, notWhitePieces, White & N);
 		PossibleB(moves, notWhitePieces, White & B);
@@ -454,6 +451,7 @@ std::vector<Move>* ChessEngine::PossibleMoves() {
 		PossibleWC(moves);
 	} else {
 		const auto notBlackPieces = ~((occupied & Black) | (White & K)); // added WK to avoid illegal capture
+		unsafeForBlack = UnsafeForBlack();
 		PossibleBP(moves);
 		PossibleN(moves, notBlackPieces, Black & N);
 		PossibleB(moves, notBlackPieces, Black & B);
@@ -466,206 +464,219 @@ std::vector<Move>* ChessEngine::PossibleMoves() {
 	return moves;
 }
 
-void ChessEngine::PossibleWP(std::vector<Move>* moves) const {
+void ChessEngine::PossibleWP(std::vector<Move>& moves) const {
 	const auto blackPieces = Black & ~K; // omitted BK to avoid illegal capture
 	const auto WP = White & P;
 	const auto BP = Black & P;
-	// TODO: change loop style
 
 	// Attack top right
-	uint64_t mask = (WP << 7) & blackPieces & ~FileA;
-	for(int i = 16; i < 56; i++) {
-		// Only go through rank 2-7
-		if(((mask >> i) & 1) == 0)
-			continue;
+	uint64_t mask = (WP << 7) & blackPieces & ~FileA & ~Rank8;
+	uint64_t poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::WhitePawn
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 
 	// Attack top left
-	mask = (WP << 9) & blackPieces & ~FileH;
-	for(int i = 16; i < 56; i++) {
-		// Only go through rank 2-7
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (WP << 9) & blackPieces & ~FileH & ~Rank8;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 + 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::WhitePawn
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 
 	// Move 1 forward
-	mask = (WP << 8) & empty;
-	for(int i = 16; i < 56; i++) {
-		// Only go through rank 2-7
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (WP << 8) & empty & ~Rank8;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::WhitePawn
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 
 	// Move 2 forward
-	mask = (WP << 16) & empty & (empty << 8);
-	for(int i = 24; i < 32; i++) {
-		// Only go through rank 4
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (WP << 16) & empty & (empty << 8) & Rank4;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			(y1 + 2),
 			x1,
 			y1,
 			MoveType::WhitePawn
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 
 	// Promote by Move 1 forward
-	mask = (WP << 8) & empty;
-	for(int i = 56; i < 64; i++) {
-		// Only go through rank8
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (WP << 8) & empty & Rank8;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionN
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionB
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionR
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionQ
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 
 	// Promote by Attack top right
-	mask = (WP << 7) & blackPieces & ~FileA;
-	for(int i = 56; i < 64; i++) {
-		// Only go through rank8
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (WP << 7) & blackPieces & ~FileA & Rank8;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionN
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionB
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionR
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionQ
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 
 	// Promote by Attack top left
-	mask = (WP << 9) & blackPieces & ~FileH;
-	for(int i = 56; i < 64; i++) {
-		// Only go through rank8
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (WP << 9) & blackPieces & ~FileH & Rank8;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 + 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionN
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 + 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionB
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 + 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionR
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 + 1),
 			(y1 + 1),
 			x1,
 			y1,
 			MoveType::PromotionQ
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 
 	#pragma region En passant
@@ -677,7 +688,7 @@ void ChessEngine::PossibleWP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			y1,
 			x1,
@@ -694,7 +705,7 @@ void ChessEngine::PossibleWP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 + 1),
 			y1,
 			x1,
@@ -705,7 +716,7 @@ void ChessEngine::PossibleWP(std::vector<Move>* moves) const {
 	#pragma endregion
 }
 
-void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
+void ChessEngine::PossibleBP(std::vector<Move>& moves) const {
 	const auto whitePieces = White & ~K; // omitted WK to avoid illegal capture
 	const auto BP = Black & P;
 	const auto WP = White & P;
@@ -716,10 +727,10 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 	while(poss != 0) {
 		int i = NumberOfTrailingZeros(poss);
 
-		const auto x1 = 7 - i % 8;
-		const auto y1 = 7 - i / 8;
+		auto x1 = 7 - i % 8;
+		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1 + 1,
 			y1 - 1,
 			x1,
@@ -741,7 +752,7 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1 - 1,
 			y1 - 1,
 			x1,
@@ -763,7 +774,7 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			y1 - 1,
 			x1,
@@ -785,7 +796,7 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			y1 - 2,
 			x1,
@@ -799,125 +810,130 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 	#pragma endregion
 
 	#pragma region Promote by Move 1 forward
-	mask = (BP >> 8) & empty;
-	// Only go through rank1
-	for(int i = 0; i < 8; i++) {
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (BP >> 8) & empty & Rank1;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionN
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionB
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionR
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionQ
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 	#pragma endregion
 
 	#pragma region Promote by Attack top right
-	mask = (BP >> 7) & whitePieces;
-	// Only go through rank1
-	for(int i = 1; i < 8; i++) {
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (BP >> 7) & whitePieces & ~FileH & Rank1;
+	poss = mask & ~(mask - 1);
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1 + 1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionN
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1 + 1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionB
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1 + 1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionR
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			x1 + 1,
 			y1 - 1,
 			x1,
 			y1,
 			MoveType::PromotionQ
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 	#pragma endregion
 
 	#pragma region Promote by Attack top left
-	mask = (BP >> 9) & whitePieces;
-	for(int i = 0; i < 7; i++) {
-		// Only go through rank8
-		if(((mask >> i) & 1) == 0)
-			continue;
+	mask = (BP >> 9) & whitePieces & ~FileA & Rank1;
+	while(poss != 0) {
+		int i = NumberOfTrailingZeros(poss);
 
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 - 1),
 			x1,
 			y1,
 			MoveType::PromotionN
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 - 1),
 			x1,
 			y1,
 			MoveType::PromotionB
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 - 1),
 			x1,
 			y1,
 			MoveType::PromotionR
 		);
-		moves->emplace_back(
+		moves.emplace_back(
 			(x1 - 1),
 			(y1 - 1),
 			x1,
 			y1,
 			MoveType::PromotionQ
 		);
+
+		mask &= ~poss;
+		poss = mask & ~(mask - 1);
 	}
 	#pragma endregion
 
@@ -930,7 +946,7 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
+		moves.emplace_back(
 			x1 + 1,
 			y1,
 			x1,
@@ -947,18 +963,18 @@ void ChessEngine::PossibleBP(std::vector<Move>* moves) const {
 		auto x1 = 7 - i % 8;
 		auto y1 = 7 - i / 8;
 
-		moves->emplace_back(
-			(x1 - 1), 
-			y1, 
-			x1, 
-			(y1 + 1), 
+		moves.emplace_back(
+			(x1 - 1),
+			y1,
+			x1,
+			(y1 + 1),
 			MoveType::BlackEnPassant
 		);
 	}
 	#pragma endregion
 }
 
-void ChessEngine::PossibleN(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t n) {
+void ChessEngine::PossibleN(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t n) const {
 	auto i = n & ~(n - 1);
 
 	while(i) {
@@ -969,7 +985,7 @@ void ChessEngine::PossibleN(std::vector<Move>* moves, uint64_t notMyPieces, uint
 		while(j != 0) {
 			const auto index = NumberOfTrailingZeros(j);
 
-			moves->emplace_back(
+			moves.emplace_back(
 				7 - location % 8,
 				7 - location / 8,
 				7 - index % 8,
@@ -985,18 +1001,18 @@ void ChessEngine::PossibleN(std::vector<Move>* moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleB(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t b) const {
+void ChessEngine::PossibleB(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t b) const {
 	auto i = b & ~(b - 1);
 
 	while(i != 0) {
 		const auto location = NumberOfTrailingZeros(i);
-		uint64_t possibility = DiagMask(location) & notMyPieces;
+		uint64_t possibility = DiagMask(location, occupied) & notMyPieces;
 		uint64_t j = possibility & ~(possibility - 1);
 
 		while(j != 0) {
 			const auto index = NumberOfTrailingZeros(j);
 
-			moves->emplace_back(
+			moves.emplace_back(
 				7 - location % 8,
 				7 - location / 8,
 				7 - index % 8,
@@ -1012,18 +1028,18 @@ void ChessEngine::PossibleB(std::vector<Move>* moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleR(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t r, MoveType type) const {
+void ChessEngine::PossibleR(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t r, MoveType type) const {
 	auto i = r & ~(r - 1);
 
 	while(i != 0) {
 		int location = NumberOfTrailingZeros(i);
-		uint64_t possibility = StraightMask(location) & notMyPieces;
+		uint64_t possibility = StraightMask(location, occupied) & notMyPieces;
 		uint64_t j = possibility & ~(possibility - 1);
 
 		while(j != 0) {
 			const auto index = NumberOfTrailingZeros(j);
 
-			moves->emplace_back(
+			moves.emplace_back(
 				7 - location % 8,
 				7 - location / 8,
 				7 - index % 8,
@@ -1039,18 +1055,18 @@ void ChessEngine::PossibleR(std::vector<Move>* moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleQ(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t q) const {
+void ChessEngine::PossibleQ(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t q) const {
 	auto i = q & ~(q - 1);
 
 	while(i != 0) {
 		int location = NumberOfTrailingZeros(i);
-		uint64_t possibility = (StraightMask(location) | DiagMask(location)) & notMyPieces;
+		uint64_t possibility = (StraightMask(location, occupied) | DiagMask(location, occupied)) & notMyPieces;
 		uint64_t j = possibility & ~(possibility - 1);
 
 		while(j != 0) {
 			const auto index = NumberOfTrailingZeros(j);
 
-			moves->emplace_back(
+			moves.emplace_back(
 				(7 - location % 8),
 				(7 - location / 8),
 				(7 - index % 8),
@@ -1066,7 +1082,7 @@ void ChessEngine::PossibleQ(std::vector<Move>* moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleK(std::vector<Move>* moves, uint64_t notMyPieces, uint64_t k, MoveType type) {
+void ChessEngine::PossibleK(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t k, MoveType type) const {
 	auto i = k & ~(k - 1);
 
 	while(i != 0) {
@@ -1077,7 +1093,7 @@ void ChessEngine::PossibleK(std::vector<Move>* moves, uint64_t notMyPieces, uint
 		while(j != 0) {
 			const auto index = NumberOfTrailingZeros(j);
 
-			moves->emplace_back(
+			moves.emplace_back(
 				(7 - location % 8),
 				(7 - location / 8),
 				(7 - index % 8),
@@ -1093,7 +1109,7 @@ void ChessEngine::PossibleK(std::vector<Move>* moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleWC(std::vector<Move>* moves) {
+void ChessEngine::PossibleWC(std::vector<Move>& moves) {
 	if(unsafeForWhite & White & K) {
 		return; // King is in check
 	}
@@ -1102,7 +1118,7 @@ void ChessEngine::PossibleWC(std::vector<Move>* moves) {
 		if(!(White & R & 1))
 			CastleWK = false; // Rook has been hit
 		else if(!((occupied | unsafeForWhite) & 0b110)) {
-			moves->emplace_back(4, 7, 6, 7, MoveType::WhiteCastle);
+			moves.emplace_back(4, 7, 6, 7, MoveType::WhiteCastle);
 		}
 	}
 
@@ -1110,12 +1126,12 @@ void ChessEngine::PossibleWC(std::vector<Move>* moves) {
 		if(!(White & R & (1ULL << 7)))
 			CastleWQ = false; // Rook has been hit
 		else if((occupied & 0b01110000) == 0 && (unsafeForWhite & 0b00110000) == 0) {
-			moves->emplace_back(4, 7, 2, 7, MoveType::WhiteCastle);
+			moves.emplace_back(4, 7, 2, 7, MoveType::WhiteCastle);
 		}
 	}
 }
 
-void ChessEngine::PossibleBC(std::vector<Move>* moves) {
+void ChessEngine::PossibleBC(std::vector<Move>& moves) {
 	if(unsafeForBlack & Black & K) {
 		return; // King is in check
 	}
@@ -1124,7 +1140,7 @@ void ChessEngine::PossibleBC(std::vector<Move>* moves) {
 		if((Black & R & (1ULL << 56)) == 0) {
 			CastleBK = false; // Rook has been hit
 		} else if(((occupied | unsafeForBlack) & (0b0110ULL << 56)) == 0) {
-			moves->emplace_back(4, 0, 6, 0, MoveType::BlackCastle);
+			moves.emplace_back(4, 0, 6, 0, MoveType::BlackCastle);
 		}
 	}
 
@@ -1132,31 +1148,23 @@ void ChessEngine::PossibleBC(std::vector<Move>* moves) {
 		if((Black & R & (1ULL << 63)) == 0) {
 			CastleBQ = false; // Rook has been hit
 		} else if((occupied & (0b0111ULL << 60)) == 0 && (unsafeForBlack & (0b0011ULL << 60)) == 0)
-			moves->emplace_back(4, 0, 2, 0, MoveType::BlackCastle);
+			moves.emplace_back(4, 0, 2, 0, MoveType::BlackCastle);
 	}
 }
 
-uint64_t ChessEngine::StraightMask(int s) const {
-	const auto mag = rookTbl[s];
-	return rookAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 12)];
-}
-uint64_t ChessEngine::DiagMask(int s) const {
-	const auto mag = bishopTbl[s];
-	return bishopAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 9)];
-}
-
 uint64_t ChessEngine::UnsafeForBlack() const {
-	uint64_t res;
+	uint64_t res = 0;
+	uint64_t i;
 
 	#pragma region Pawn
-	res = ((White & P) << 7) & ~FileA;
+	res |= ((White & P) << 7) & ~FileA;
 	res |= ((White & P) << 9) & ~FileH;
 	#pragma endregion
 
 	#pragma region Knight
 	{
 		auto wn = White & N;
-		auto i = wn & ~(wn - 1);
+		i = wn & ~(wn - 1);
 
 		while(i != 0) {
 			res |= KnightMoves[NumberOfTrailingZeros(i)];;
@@ -1170,10 +1178,10 @@ uint64_t ChessEngine::UnsafeForBlack() const {
 	#pragma region Bishop / Queen
 	{
 		auto qb = White & (B | Q);
-		auto i = qb & ~(qb - 1);
+		i = qb & ~(qb - 1);
 
 		while(i != 0) {
-			res |= DiagMask(NumberOfTrailingZeros(i));
+			res |= DiagMask(NumberOfTrailingZeros(i), occupied);
 
 			qb &= ~i;
 			i = qb & ~(qb - 1);
@@ -1184,10 +1192,10 @@ uint64_t ChessEngine::UnsafeForBlack() const {
 	#pragma region Rook / Queen
 	{
 		auto qr = White & (R | Q);
-		auto i = qr & ~(qr - 1);
+		i = qr & ~(qr - 1);
 
 		while(i != 0) {
-			res |= StraightMask(NumberOfTrailingZeros(i));
+			res |= StraightMask(NumberOfTrailingZeros(i), occupied);
 
 			qr &= ~i;
 			i = qr & ~(qr - 1);
@@ -1198,7 +1206,7 @@ uint64_t ChessEngine::UnsafeForBlack() const {
 	#pragma region King
 	{
 		auto wk = White & K;
-		auto i = wk & ~(wk - 1);
+		i = wk & ~(wk - 1);
 
 		while(i != 0) {
 			res |= KingMoves[NumberOfTrailingZeros(i)];
@@ -1211,67 +1219,60 @@ uint64_t ChessEngine::UnsafeForBlack() const {
 
 	return res;
 }
+
 uint64_t ChessEngine::UnsafeForWhite() const {
 	uint64_t res;
+	uint64_t i;
 
 	#pragma region Pawn
-	res = ((Black & P) >> 7) & ~FileH;
-	res |= ((Black & P) >> 9) & ~FileA;
+	res = ((Black & P) >> 7) & ~FileH | ((Black & P) >> 9) & ~FileA;
 	#pragma endregion
 
 	#pragma region Knight
-	{
-		auto bn = Black & N;
-		auto i = bn & ~(bn - 1);
+	auto bn = Black & N;
+	i = bn & ~(bn - 1);
 
-		while(i != 0) {
-			res |= KnightMoves[NumberOfTrailingZeros(i)];
+	while(i != 0) {
+		res |= KnightMoves[NumberOfTrailingZeros(i)];
 
-			bn &= ~i;
-			i = bn & ~(bn - 1);
-		}
+		bn &= ~i;
+		i = bn & ~(bn - 1);
 	}
 	#pragma endregion
 
 	#pragma region Bishop / Queen
-	{
-		auto qb = Black & (B | Q);
-		auto i = qb & ~(qb - 1);
+	auto qb = Black & (B | Q);
+	i = qb & ~(qb - 1);
 
-		while(i != 0) {
-			res |= DiagMask(NumberOfTrailingZeros(i));
+	while(i != 0) {
+		res |= DiagMask(NumberOfTrailingZeros(i), occupied);
 
-			qb &= ~i;
-			i = qb & ~(qb - 1);
-		}
+		qb &= ~i;
+		i = qb & ~(qb - 1);
 	}
 	#pragma endregion
 
 	#pragma region Rook / Queen
-	{
-		auto qr = Black & (R | Q);
-		auto i = qr & ~(qr - 1);
+	auto qr = Black & (R | Q);
+	i = qr & ~(qr - 1);
 
-		while(i != 0) {
-			res |= StraightMask(NumberOfTrailingZeros(i));
+	while(i != 0) {
+		res |= StraightMask(NumberOfTrailingZeros(i), occupied);
 
-			qr &= ~i;
-			i = qr & ~(qr - 1);
-		}
+		qr &= ~i;
+		i = qr & ~(qr - 1);
 	}
 	#pragma endregion
 
 	#pragma region King
-	{
-		auto bk = Black & K;
-		auto i = bk & ~(bk - 1);
+	auto bk = Black & K;
+	i = bk & ~(bk - 1);
 
-		while(i != 0) {
-			res |= KingMoves[NumberOfTrailingZeros(i)];
+	while(i != 0) {
+		res |= KingMoves[NumberOfTrailingZeros(i)];
 
-			bk &= ~i;
-			i = bk & ~(bk - 1);
-		}
+		bk &= ~i;
+		i = bk & ~(bk - 1);
 	}
 	#pragma endregion
 

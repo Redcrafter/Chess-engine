@@ -4,7 +4,7 @@ Move Players::MinOpptMoves::MakeMove(ChessEngine& game) {
 	Move best;
 	int bestScore = -1;
 
-	for(Move move : *game.GetMoves()) {
+	for(Move move : game.GetMoves()) {
 		auto cp = game;
 		cp.MakeMove(move);
 
@@ -13,7 +13,7 @@ Move Players::MinOpptMoves::MakeMove(ChessEngine& game) {
 
 		int count = 0;
 
-		for(auto cmove : *cp.GetMoves()) {
+		for(auto cmove : cp.GetMoves()) {
 			auto cpp = cp;
 			cpp.MakeMove(cmove);
 

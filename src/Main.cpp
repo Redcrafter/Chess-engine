@@ -17,11 +17,11 @@ start:
 		}
 
 		auto moves = game.GetMoves();
-		if(moves->empty()) {
+		if(moves.empty()) {
 			break;
 		}
 
-		std::shuffle(moves->begin(), moves->end(), rnd);
+		std::shuffle(moves.begin(), moves.end(), rnd);
 
 		Move m;
 		if(game.WhiteMove) {
@@ -41,7 +41,7 @@ start:
 			game = cp;
 			count++;
 		} else {
-			moves->pop_back();
+			moves.pop_back();
 		}
 	}
 
@@ -124,7 +124,7 @@ int main() {
 	// RunElo();
 
 	MoveTest();
-	// PerformanceTest();
+	PerformanceTest();
 	// CalcMagic();
 
 	/* auto rnd = std::mt19937(std::random_device()());

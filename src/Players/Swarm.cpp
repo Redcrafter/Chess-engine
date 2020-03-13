@@ -1,7 +1,7 @@
 #include "Swarm.h"
 
 Move Players::Swarm::MakeMove(ChessEngine& game) {
-	auto moves = *game.GetMoves();
+	auto moves = game.GetMoves();
 
 	int bestDistDiff = INT32_MIN;
 	Move best;

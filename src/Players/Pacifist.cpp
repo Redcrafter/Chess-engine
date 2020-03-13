@@ -10,7 +10,7 @@ enum Type {
 };
 
 Move Players::Pacifist::MakeMove(ChessEngine& game) {
-	auto moves = *game.GetMoves();
+	auto moves = game.GetMoves();
 
 	Move best;
 	int bestScore = -1;

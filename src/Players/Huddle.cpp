@@ -1,7 +1,7 @@
 #include "Huddle.h"
 
 Move Players::Huddle::MakeMove(ChessEngine& game) {
-	auto moves = *game.GetMoves();
+	auto moves = game.GetMoves();
 
 	int bestDistDiff = INT32_MIN;
 	Move best;

@@ -4,7 +4,8 @@ const uint64_t FileA = 0x8080808080808080,
 				FileH = 0x0101010101010101,
 				Rank1 = 0xFF,
 				Rank4 = 0xFF000000,
-				Rank5 = 0xFF00000000;
+				Rank5 = 0xFF00000000,
+				Rank8 = 0xFF00000000000000UL;
 
 const uint64_t DiagMasks[] = {
 	// from bottom right to top left

@@ -1,7 +1,7 @@
 #include "SameColor.h"
 
 Move Players::SameColor::MakeMove(ChessEngine& game) {
-	auto moves = *game.GetMoves();
+	auto moves = game.GetMoves();
 
 	for(Move move : moves) {
 		auto fromWhite = move.X0 % 2 == move.Y0 % 2;
