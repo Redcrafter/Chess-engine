@@ -1,8 +1,12 @@
 #include "Console.h"
 
+#include <iostream>
+
 Move Players::Console::MakeMove(ChessEngine& game) {
-	auto moves = game.GetMoves();
+	auto moves = game.GetValidMoves();
 	std::cout << game << std::endl;
+
+	if(moves.empty()) return {};
 
 	while(true) {
 		std::cout << "Enter Move: ";
@@ -11,10 +15,10 @@ Move Players::Console::MakeMove(ChessEngine& game) {
 		std::getline(std::cin, str);
 
 		if(str.length() == 4) {
-			const Move m{str, MoveType::Error};
+			const Move m(str, MoveType::Error);
 
 			for(Move& move : moves) {
-				if(move.X0 == m.X0 && move.Y0 == m.Y0 && move.X1 == m.X1 && move.Y1 == m.Y1) {
+				if(move == m) {
 					return move;
 				}
 			}

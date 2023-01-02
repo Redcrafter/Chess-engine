@@ -1,15 +1,9 @@
 #include "MinOpptMoves.h"
 
 Move Players::MinOpptMoves::MakeMove(ChessEngine& game) {
-	Move best;
-	int bestScore = -1;
-
-	for(Move move : game.GetMoves()) {
+	return bestMove(game, [=](const Move& m) {
 		auto cp = game;
-		cp.MakeMove(move);
-
-		if(!cp.IsValid()) 
-			continue;
+		cp.MakeMove(m);
 
 		int count = 0;
 
@@ -18,15 +12,10 @@ Move Players::MinOpptMoves::MakeMove(ChessEngine& game) {
 			cpp.MakeMove(cmove);
 
 			if(cpp.IsValid()) {
-				count++;
+				count--;
 			}
 		}
 
-		if(count > bestScore) {
-			bestScore = count;
-			best = move;
-		}
-	}
-
-	return best;
+		return count;
+	});
 }

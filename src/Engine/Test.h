@@ -10,4 +10,4 @@ struct Testcase {
 
 void RunTests();
 void MoveTest();
-void PerformanceTest();
+void PerformanceTest(int depth);

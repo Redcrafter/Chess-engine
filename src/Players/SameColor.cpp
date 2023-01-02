@@ -1,22 +1,14 @@
 #include "SameColor.h"
 
 Move Players::SameColor::MakeMove(ChessEngine& game) {
-	auto moves = game.GetMoves();
-
-	for(Move move : moves) {
-		auto fromWhite = move.X0 % 2 == move.Y0 % 2;
-		auto toWhite = move.X1 % 2 == move.Y1 % 2;
+	return bestMove(game, [=](const Move& m) {
+		auto fromWhite = m.X0 % 2 == m.Y0 % 2;
+		auto toWhite = m.X1 % 2 == m.Y1 % 2;
 
 		if(game.WhiteMove) {
-			if(!fromWhite && toWhite) {
-				return move;
-			}
+			return !fromWhite + toWhite * 2;
 		} else {
-			if(fromWhite && !toWhite) {
-				return move;
-			}
+			return fromWhite + !toWhite * 2;
 		}
-	}
-
-	return moves[rand() % moves.size()];
+	});
 }

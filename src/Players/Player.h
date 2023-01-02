@@ -1,16 +1,33 @@
 #pragma once
-#include "../Engine/Move.h"
 #include "../Engine/ChessEngine.h"
-#include "../Platform.h"
+#include <climits>
 
-#include <iostream>
+template <typename F>
+auto bestMove(ChessEngine& game, F&& keyFunc) {
+	Move best{};
+	int score = INT_MIN;
+
+	auto moves = game.GetMoves();
+	
+	for(auto move : moves) {
+		auto cp = game;
+		cp.MakeMove(move);
+		if(!cp.IsValid()) continue;
+
+		int res = keyFunc(move);
+		if(res > score) {
+			score = res;
+			best = move;
+		}
+	}
+	
+	return best;
+}
 
 namespace Players {
 	class Player {
 	public:
-		double Rating = 1000;
-		// double EnemySum = 0;
-		// int Games = 0;
+		virtual ~Player() {}
 		virtual Move MakeMove(ChessEngine& game) { return {}; };
 	};
 }

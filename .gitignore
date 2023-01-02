@@ -1,6 +1,5 @@
 .vs/
-bin/
-Chess
+build/
 
 # === VSCode ===
 .vscode/*

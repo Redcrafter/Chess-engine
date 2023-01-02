@@ -1,41 +1,20 @@
 #include "ChessEngine.h"
-#include "ChessConstants.h"
-#include "Tables.h"
-#include "../Platform.h"
 
+#include <cassert>
 #include <iostream>
-#include <memory.h>
+
+#include "ChessConstants.h"
+#include "Magic.h"
+#include "../Platform.h"
 
 static uint64_t Reverse(uint64_t i) {
 	// HD, Figure 7-1
-	i = (i & 0x5555555555555555L) << 1 | (i >> 1) & 0x5555555555555555L;
-	i = (i & 0x3333333333333333L) << 2 | (i >> 2) & 0x3333333333333333L;
-	i = (i & 0x0f0f0f0f0f0f0f0fL) << 4 | (i >> 4) & 0x0f0f0f0f0f0f0f0fL;
-	i = (i & 0x00ff00ff00ff00ffL) << 8 | (i >> 8) & 0x00ff00ff00ff00ffL;
+	i = (i & 0x5555555555555555L) << 1 | ((i >> 1) & 0x5555555555555555L);
+	i = (i & 0x3333333333333333L) << 2 | ((i >> 2) & 0x3333333333333333L);
+	i = (i & 0x0f0f0f0f0f0f0f0fL) << 4 | ((i >> 4) & 0x0f0f0f0f0f0f0f0fL);
+	i = (i & 0x00ff00ff00ff00ffL) << 8 | ((i >> 8) & 0x00ff00ff00ff00ffL);
 	i = (i << 48) | ((i & 0xffff0000L) << 16) | ((i >> 16) & 0xffff0000L) | (i >> 48);
 	return i;
-}
-
-static uint64_t FileMask(int file) {
-	return 0x0101010101010101ULL << file;
-}
-
-static uint64_t RevFileMask(int file) {
-	return 0x0101010101010101ULL << (7 - file);
-}
-
-static uint64_t RankMask(int rank) {
-	return 0xFFULL << (rank << 3);
-}
-
-static uint64_t StraightMask(const int s, const uint64_t occupied) {
-	const auto mag = rookTbl[s];
-	return rookAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 12)];
-}
-
-static uint64_t DiagMask(const int s, const uint64_t occupied) {
-	const auto mag = bishopTbl[s];
-	return bishopAttacks[s][((occupied & mag.mask) * mag.magic) >> (64 - 9)];
 }
 
 void PrintBoard(uint64_t bitboard) {
@@ -58,10 +37,9 @@ void PrintBoard(uint64_t bitboard) {
 	std::cout << str.str() << '\n';
 }
 
-ChessEngine::ChessEngine(): ChessEngine("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") { }
+ChessEngine::ChessEngine() : ChessEngine("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
-ChessEngine::ChessEngine(std::string fen) : White(0), Black(0), P(0), N(0), R(0), B(0), Q(0), K(0),
-                                            EP(0), unsafeForWhite(0), unsafeForBlack(0) {
+ChessEngine::ChessEngine(const std::string fen) : White(0), Black(0), P(0), N(0), R(0), B(0), Q(0), K(0), EP(0), unsafeForWhite(0), unsafeForBlack(0) {
 	auto mask = 1ULL << 63;
 
 	int i = 0;
@@ -374,6 +352,26 @@ std::ostream& operator<<(std::ostream& str, const ChessEngine& game) {
 		str << " | ";
 		const auto mask = 1ULL << i;
 
+#if true
+		// utf-8 characters
+		// TODO: add console param
+		if((game.P & mask) != 0) {
+			str << ((game.White & mask) != 0 ? "♙" : "♟");
+		} else if((game.N & mask) != 0) {
+			str << ((game.White & mask) != 0 ? "♘" : "♞");
+		} else if((game.R & mask) != 0) {
+			str << ((game.White & mask) != 0 ? "♖" : "♜");
+		} else if((game.B & mask) != 0) {
+			str << ((game.White & mask) != 0 ? "♗" : "♝");
+		} else if((game.Q & mask) != 0) {
+			str << ((game.White & mask) != 0 ? "♕" : "♛");
+		} else if((game.K & mask) != 0) {
+			str << ((game.White & mask) != 0 ? "♔" : "♚");
+		} else {
+			str << ' ';
+		}
+#else
+
 		if((game.P & mask) != 0) {
 			str << ((game.White & mask) != 0 ? 'P' : 'p');
 		} else if((game.N & mask) != 0) {
@@ -389,6 +387,7 @@ std::ostream& operator<<(std::ostream& str, const ChessEngine& game) {
 		} else {
 			str << ' ';
 		}
+#endif
 
 		if(i % 8 == 0) {
 			str << " |\n";
@@ -399,6 +398,10 @@ std::ostream& operator<<(std::ostream& str, const ChessEngine& game) {
 	str << "     A   B   C   D   E   F   G   H\n";
 
 	return str;
+}
+
+void ChessEngine::print() const {
+	std::cout << *this << std::endl;
 }
 
 void ChessEngine::CalcTables() {
@@ -436,9 +439,8 @@ bool ChessEngine::IsCheckmate() {
 	return true;
 }
 
-std::vector<Move> ChessEngine::GetMoves() {
-	auto moves = std::vector<Move>();
-
+Test ChessEngine::GetMoves() {
+	Test moves;
 	if(WhiteMove) {
 		const auto notWhitePieces = ~((occupied & White) | (Black & K)); // added BK to avoid illegal capture
 		unsafeForWhite = UnsafeForWhite();
@@ -464,7 +466,40 @@ std::vector<Move> ChessEngine::GetMoves() {
 	return moves;
 }
 
-void ChessEngine::PossibleWP(std::vector<Move>& moves) const {
+Test ChessEngine::GetValidMoves() {
+	auto moves = GetMoves();
+	for(int i = 0; i < moves.size(); ++i) {
+		auto cp = *this;
+		cp.MakeMove(moves[i]);
+
+		if(!cp.IsValid()) {
+			moves.removeAt(i);
+		}
+	}
+	return moves;
+}
+
+Piece ChessEngine::GetPiece(int position) const {
+	auto mask = 1llu << (63 - position);
+	int color = 0;
+	if(White & mask) color = 0;
+	if(Black & mask) color = 1;
+
+	if(P & mask) return (Piece)((int)Piece::WhitePawn + color);
+	if(N & mask) return (Piece)((int)Piece::WhiteKnight + color);
+	if(B & mask) return (Piece)((int)Piece::WhiteBishop + color);
+	if(R & mask) return (Piece)((int)Piece::WhiteRook + color);
+	if(Q & mask) return (Piece)((int)Piece::WhiteQueen + color);
+	if(K & mask) return (Piece)((int)Piece::WhiteKing + color);
+
+	return Piece::Empty;
+}
+
+Piece ChessEngine::GetPiece(int column, int row) const {
+	return GetPiece(row * 8 + column);
+}
+
+void ChessEngine::PossibleWP(Test& moves) const {
 	const auto blackPieces = Black & ~K; // omitted BK to avoid illegal capture
 	const auto WP = White & P;
 	const auto BP = Black & P;
@@ -716,7 +751,7 @@ void ChessEngine::PossibleWP(std::vector<Move>& moves) const {
 	#pragma endregion
 }
 
-void ChessEngine::PossibleBP(std::vector<Move>& moves) const {
+void ChessEngine::PossibleBP(Test& moves) const {
 	const auto whitePieces = White & ~K; // omitted WK to avoid illegal capture
 	const auto BP = Black & P;
 	const auto WP = White & P;
@@ -974,7 +1009,7 @@ void ChessEngine::PossibleBP(std::vector<Move>& moves) const {
 	#pragma endregion
 }
 
-void ChessEngine::PossibleN(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t n) const {
+void ChessEngine::PossibleN(Test& moves, uint64_t notMyPieces, uint64_t n) const {
 	auto i = n & ~(n - 1);
 
 	while(i) {
@@ -1001,7 +1036,7 @@ void ChessEngine::PossibleN(std::vector<Move>& moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleB(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t b) const {
+void ChessEngine::PossibleB(Test& moves, uint64_t notMyPieces, uint64_t b) const {
 	auto i = b & ~(b - 1);
 
 	while(i != 0) {
@@ -1028,7 +1063,7 @@ void ChessEngine::PossibleB(std::vector<Move>& moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleR(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t r, MoveType type) const {
+void ChessEngine::PossibleR(Test& moves, uint64_t notMyPieces, uint64_t r, MoveType type) const {
 	auto i = r & ~(r - 1);
 
 	while(i != 0) {
@@ -1055,7 +1090,7 @@ void ChessEngine::PossibleR(std::vector<Move>& moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleQ(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t q) const {
+void ChessEngine::PossibleQ(Test& moves, uint64_t notMyPieces, uint64_t q) const {
 	auto i = q & ~(q - 1);
 
 	while(i != 0) {
@@ -1082,7 +1117,7 @@ void ChessEngine::PossibleQ(std::vector<Move>& moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleK(std::vector<Move>& moves, uint64_t notMyPieces, uint64_t k, MoveType type) const {
+void ChessEngine::PossibleK(Test& moves, uint64_t notMyPieces, uint64_t k, MoveType type) const {
 	auto i = k & ~(k - 1);
 
 	while(i != 0) {
@@ -1109,7 +1144,7 @@ void ChessEngine::PossibleK(std::vector<Move>& moves, uint64_t notMyPieces, uint
 	}
 }
 
-void ChessEngine::PossibleWC(std::vector<Move>& moves) {
+void ChessEngine::PossibleWC(Test& moves) {
 	if(unsafeForWhite & White & K) {
 		return; // King is in check
 	}
@@ -1131,7 +1166,7 @@ void ChessEngine::PossibleWC(std::vector<Move>& moves) {
 	}
 }
 
-void ChessEngine::PossibleBC(std::vector<Move>& moves) {
+void ChessEngine::PossibleBC(Test& moves) {
 	if(unsafeForBlack & Black & K) {
 		return; // King is in check
 	}

@@ -1,5 +1,7 @@
 #include "Pacifist.h"
 
+#include "Platform.h"
+
 enum Type {
 	Checkmate,
 	Check,
@@ -10,51 +12,27 @@ enum Type {
 };
 
 Move Players::Pacifist::MakeMove(ChessEngine& game) {
-	auto moves = game.GetMoves();
+	auto mask = game.WhiteMove ? game.Black : game.White;
 
-	Move best;
-	int bestScore = -1;
+	int qCount = popcnt64(mask & game.Q);
+	int rCount = popcnt64(mask & game.R);
+	int bnCount = popcnt64(mask & (game.B | game.N));
+	int pCount = popcnt64(mask & game.P);
 
-	int mask = game.WhiteMove ? game.Black : game.White;
-
-	const int qCount = popcnt64(mask & game.Q);
-	const int rCount = popcnt64(mask & game.R);
-	const int bnCount = popcnt64(mask & (game.B | game.N));
-	const int pCount = popcnt64(mask & game.P);
-
-	for(Move move : moves) {
+	return bestMove(game, [=](const Move& m) {
 		auto cp = game;
-		cp.MakeMove(move);
+		cp.MakeMove(m);
 
-		if(cp.IsValid()) {
-			int score = -1;
-
-			if(cp.IsCheck()) {
-				if(cp.IsCheckmate()) {
-					score = Checkmate;
-				} else {
-					score = Check;
-				}
-			} else {
-				if(qCount - popcnt64(mask & cp.Q)) {
-					score = CaptureQueen;
-				} else if(rCount - popcnt64(mask & cp.R)) {
-					score = CaptureRook;
-				} else if(bnCount - popcnt64(mask & (cp.B | cp.N))) {
-					score = CaptureBN;
-				} else if(pCount - popcnt64(mask & cp.P)) {
-					score = CapturePawn;
-				} else {
-					return move; // Best move
-				}
+		if(cp.IsCheck()) {
+			if(cp.IsCheckmate()) {
+				return 0;
 			}
-
-			if(score > bestScore) {
-				bestScore = score;
-				best = move;
-			}
+			return 1;
 		}
-	}
-
-	return best;
+		if(qCount - popcnt64(mask & cp.Q)) return 2;
+		if(rCount - popcnt64(mask & cp.R)) return 3;
+		if(bnCount - popcnt64(mask & (cp.B | cp.N))) return 4;
+		if(pCount - popcnt64(mask & cp.P)) return 5;
+		return 6; // Best move
+	});
 }
